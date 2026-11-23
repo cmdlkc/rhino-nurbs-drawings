@@ -1,21 +1,22 @@
 # rhino-nurbs-drawings
 
-An Agent Skill for Claude Code that makes the agent draw 2D linework directly in Rhino by writing scripts: elevations, sections, plans, facades and curve-heavy ornament, as true NURBS curves with layers, line weights, hatches and vector export.
+An Agent Skill for Claude Code that makes the agent draw 2D linework directly in Rhino by writing scripts, as true NURBS curves with layers, line weights, hatches and vector export. It is for any line drawing: building elevations, sections and plans, objects and products, diagrams, illustration, botanical studies, patterns, ornament.
 
-It is a drawing tool, not a modelling tool. It does not build a 3D model and does not use Make2D or hidden-line projection, whose output arrives fragmented and needs cleaning. For 3D modelling see the companion skill, [rhino-nurbs-modelling](https://github.com/cmdlkc/rhino-nurbs-modelling).
+It makes the drawing only, not a presentation sheet: no border, title block or scale bar unless you ask. It is a drawing tool, not a modelling tool. It does not build a 3D model and does not use Make2D or hidden-line projection, whose output arrives fragmented and needs cleaning. For 3D modelling see the companion skill, [rhino-nurbs-modelling](https://github.com/cmdlkc/rhino-nurbs-modelling).
 
 It exists because agents connected to Rhino through tool-based MCP servers tend to produce only primitives such as circles and rectangles. The skill removes that shortcut and gives the agent tested helper code, a curve toolkit, numeric checks and a review routine.
 
 ## How it draws
 
 1. Picks a route into Rhino and says which one it is using.
-2. Writes an intent file: sheet and scale, setting-out as named numbers, depth bands from back to front, and every element with the rule that generates its curves.
-3. Draws on the World XY plane in short Python passes, one script each, back to front.
-4. Handles overlap by construction: anything passing behind a nearer closed outline is clipped, and the depth band sets the line weight.
-5. Fills cut material and closed regions with hatches, then exports PDF, SVG and DWG.
-6. Accepts a pass only when its numeric checks pass (flat, closed, no duplicates, counts and extents as expected), then looks at a capture.
+2. Researches the subject: sources with dimensions, the most frontal reference image, close-ups of details.
+3. Writes an intent file: view, units and scale, setting-out as named numbers, depth bands from back to front, and every element with the rule that generates its curves.
+4. Draws on the World XY plane in short Python passes, one script each, back to front.
+5. Handles overlap by construction: anything passing behind a nearer closed outline is clipped, and the depth band sets the line weight.
+6. Fills cut material and closed regions with hatches, then exports the drawing as PDF, SVG and DWG on a page sized to its extents.
+7. Accepts a pass only when its numeric checks pass (flat, closed, no duplicates, counts and extents as expected), then looks at a capture.
 
-The skill includes helpers for tapering ribbons, clipping, fills, layers and checks, and recipes for whiplash stems, branching, tweened line fields, mouldings and mirrored bays.
+The skill includes helpers for tapering ribbons, clipping, fills, layers and checks, and recipes for whiplash stems, branching, tweened line fields, offsets and mirrored or repeated units.
 
 ## Requirements
 
@@ -48,7 +49,11 @@ Then run `/skills` in Claude Code to confirm it is listed.
 ## Use
 
 ```
-/rhino-nurbs-drawings Draw the street elevation of a three-bay, four-storey Art Nouveau facade at 1:50 on A2: whiplash ironwork balconies, curved window heads, stems rising from each pier. Bay width 3.2 m, storey height 3.4 m.
+/rhino-nurbs-drawings Draw the street elevation of a three-bay, four-storey Art Nouveau facade at 1:50: whiplash ironwork balconies, curved window heads, stems rising from each pier. Bay width 3.2 m, storey height 3.4 m.
+```
+
+```
+/rhino-nurbs-drawings Draw a Thonet No. 14 chair in side view at full size, with the bentwood curves as single tapering outlines.
 ```
 
 Results are strongest when you give the agent master curves, a setting-out or a reference to elaborate. It executes curves well and judges composition poorly.
@@ -57,14 +62,14 @@ Work in a new document in millimetres with a tolerance of 0.01 or finer. The ski
 
 ## What has been checked
 
-- Every helper and call in `SKILL.md` ran on Rhino 9.0.26300 (Python 3.13.13) on 23 November 2026, in memory and in a separate headless document, except viewport capture and file export.
+- Every helper and call in `SKILL.md` ran on Rhino 9.0.26300 (Python 3.13.13) on 23 November 2026, including viewport capture and PDF, SVG and DWG export; export at 1:50 measured true in the PDF.
 - The ezdxf fallback ran on Linux with ezdxf 1.4.5.
 
-Not yet run in Rhino: PDF, SVG and DWG export, viewport capture to file, and the `rhinocode` route on Rhino 9. Export scale is unconfirmed, so the skill has the agent measure a scale bar before stating a scale. Expect to correct a call or two in those parts on first use.
+Not yet run: the export page sized from the drawing extents (it replaced a fixed sheet on 23 November 2026), and the `rhinocode` route on Rhino 9. The skill has the agent measure a known dimension in the PDF before stating a scale.
 
 ## Limits
 
-- No published study evaluates agents on detailed architectural drawings. The method transfers evidence from 3D CAD research.
+- No published study evaluates agents on detailed 2D line drawings. The method transfers evidence from 3D CAD research.
 - Agents judge their own drawings poorly by eye. The numeric checks and your own review carry the weight.
 - Clipping works against closed outlines. Open or self-crossing elements cannot hide what is behind them.
 - Composition and aesthetic decisions stay with you.

@@ -1,17 +1,19 @@
 ---
 name: rhino-nurbs-drawings
-description: Use when drawing 2D linework directly in Rhino by script, such as elevations, sections, plans, facades, ornament and other curve-heavy drawings with NURBS curves, line weights, hatches and vector export. Researches the subject (sources, dimensions, reference images) before drawing. Not for 3D modelling.
+description: Use when drawing any 2D line drawing directly in Rhino by script, such as elevations, sections and plans, objects and products, diagrams, illustration, botanical or anatomical studies, patterns, ornament, lettering and other curve-heavy linework, with NURBS curves, line weights, hatches and vector export. Researches the subject (sources, dimensions, reference images) before drawing. Not for 3D modelling or sheet layout.
 ---
 
 # 2D drawing in Rhino by script
 
-This is a drawing tool. It draws flat linework directly: elevations, sections, plans, facades, ornament. It does not build 3D models and does not use Make2D or any hidden-line projection, because projected linework comes out fragmented and needs cleaning. For 3D modelling use the `rhino-nurbs-modelling` skill.
+This is a general drawing tool. It draws flat linework directly, whatever the subject: a building elevation, a chair in profile, a flower, a machine part, a pattern, a diagram. It does not build 3D models and does not use Make2D or any hidden-line projection, because projected linework comes out fragmented and needs cleaning. For 3D modelling use the `rhino-nurbs-modelling` skill.
+
+It makes the drawing itself, not a presentation sheet: no border, title block, labels, scale bar or legend unless the user asks for them. It adds no shadows (cast, reveal or shading) unless the user asks; line weight and clipping carry the depth. Architectural drawings are one use among many; the building examples below are examples, not defaults.
 
 ## Core rules (read first)
 
-0. **Research before you draw.** Before any setting-out or code, research the subject: search the web for authoritative texts (with dimensions), the most frontal reference image, close-ups of every detail, and any existing drawings, and save what you find in the job folder. Do this even when the user supplies a reference image: one image is a starting point, not a source. Run the research in a background subagent if one is available, set up the document meanwhile, and wait for the findings before fixing the setting-out. Research again whenever a check, a capture or a reviewer shows that something is uncertain. For invented or stylistic drawings, research the style: the architect's or period's real examples, not a generic idea of it. Details in "Sources first".
+0. **Research before you draw.** Before any setting-out or code, research the subject: search the web for authoritative texts (with dimensions), the most frontal reference image, close-ups of every detail, and any existing drawings, and save what you find in the job folder. Do this even when the user supplies a reference image: one image is a starting point, not a source. Run the research in a background subagent if one is available, set up the document meanwhile, and wait for the findings before fixing the setting-out. Research again whenever a check, a capture or a reviewer shows that something is uncertain. For invented or stylistic drawings, research the style: the designer's, artist's or period's real examples, not a generic idea of it. Only a purely abstract drawing built from rules the user gives (a pattern, a diagram of their own) needs no research; say so and skip. Details in "Sources first".
 1. **Write scripts, never use primitive tools.** Create geometry only through Python scripts against RhinoCommon. Do not call MCP tools such as `create_object` or any "add box/circle" tool: they are the reason output collapses into circles and rectangles.
-2. **Draw in 2D, on the World XY plane, at z = 0.** No 3D model, no Make2D, no `HiddenLineDrawing`. An elevation is drawn as an elevation: closed outlines for each element, curves for what is seen.
+2. **Draw in 2D, on the World XY plane, at z = 0.** No 3D model, no Make2D, no `HiddenLineDrawing`. A view is drawn as that view: closed outlines for each element, curves for what is seen.
 3. **Depth is built, not computed.** Every element belongs to a depth band (back to front). Draw back to front, clip whatever passes behind a nearer closed outline, and let the band decide the line weight.
 4. **Curves come from rules, not typed coordinates.** Use setting-out numbers, loops and helper functions (stems, ribbons, tweens, offsets, mirrors). Hand-typed point lists are where coordinates go wrong.
 5. **One pass per script, run it, check it, then continue.** Keep each script under about 80 lines of logic.
@@ -23,7 +25,7 @@ This is a drawing tool. It draws flat linework directly: elevations, sections, p
 
 ## Environment
 
-Checked on Rhino 9.0.26300 for Windows with Python 3.13.13 on 23 Nov 2026. Every helper and call in this file ran there, including viewport capture and PDF, SVG and DWG export (first used on a full facade drawing the same day). The same scripts are expected to run on Rhino 8 (Python 3.9).
+Checked on Rhino 9.0.26300 for Windows with Python 3.13.13 on 23 Nov 2026. Every helper and call in this file ran there, including viewport capture and PDF, SVG and DWG export (first used on a full facade drawing the same day). The export block now sizes the page from the drawing extents instead of a fixed sheet; that framing has not been run yet, so check the first PDF. The same scripts are expected to run on Rhino 8 (Python 3.9).
 
 Rules for the user's document:
 - Read `doc.ModelUnitSystem` and `doc.ModelAbsoluteTolerance` first and write them in the intent file. If the smallest feature is under about 20 times the tolerance, joins, booleans and hatches will fail: tell the user and suggest a new document in millimetres with a tolerance of 0.01 or finer. Do not change their document's tolerance yourself.
@@ -47,21 +49,21 @@ Prefer B on Rhino 9 and tell the user which route is in use. On route B:
 ## Workflow
 
 0. **Sources first** (always; rule 0). If subagents are available, send one to research while you set up; otherwise search yourself. Search in the subject's own languages as well as English. Collect:
-   - an authoritative text (heritage inventory, survey, monograph, UNESCO or listing documents) with known dimensions, at least the overall width;
-   - the most frontal, highest-resolution photograph or historic plate you can find, to scale proportions from (scale it by the known width; state that heights are scaled estimates);
-   - close-up photographs of every ornament and detail element, saved into the job folder (`_refs\`), not a temporary folder.
-   Then write an **element table** in the intent file: element, count, position (axis or offset), head shape (semicircular, segmental, flat, basket, pointed, flattened superellipse), material, source. Check each count and position against two references. Where sources conflict, say which one you followed and why. One small photo is never enough: in testing, a facade read from one 245-pixel photo had a missing oriel, a missing mansard, wrong floor heights and the wrong number of columns.
+   - an authoritative text with known dimensions, at least one overall dimension. Which kind depends on the subject: a survey, monograph or heritage listing for a building; a manufacturer's datasheet, patent or catalogue for an object; a flora, herbarium sheet or anatomy text for a natural form; a standard or specification for a part;
+   - the most frontal, highest-resolution photograph, plate or drawing you can find, to scale proportions from (scale it by the known dimension; state that other dimensions are scaled estimates);
+   - close-up images of every detail element, saved into the job folder (`_refs\`), not a temporary folder.
+   Then write an **element table** in the intent file: element, count, position (axis or offset), shape, material or surface, source. Check each count and position against two references. Where sources conflict, say which one you followed and why. One small photo is never enough: in testing, a facade read from one 245-pixel photo had a missing oriel, a missing mansard, wrong floor heights and the wrong number of columns.
 1. **Intent file.** Before any code, write `intent.md` in the working folder:
-   - sheet: units, scale, paper size, drawing type (elevation, section, plan, detail);
-   - setting-out as named numbers: overall width and height, axes, bay widths, floor levels, opening sizes;
-   - depth bands from back to front, for example `BACK` (wall plane), `MID` (frames, mouldings), `FRONT` (balconies, ironwork), `CUT` (anything sliced by the drawing plane);
+   - drawing: subject, view (elevation, section, plan, profile, detail, diagram, free illustration), units, and scale if the drawing has one;
+   - setting-out as named numbers: overall extents, axes, grids, repeat spacings and key sizes (for a building, bay widths, floor levels and opening sizes; for a chair, seat height, depth and leg spacing; for a flower, petal count and lengths);
+   - depth bands from back to front, for example `BACK` (the furthest plane), `MID`, `FRONT` (the nearest projecting parts), `CUT` (anything sliced by the drawing plane);
    - every element with its band, whether it is a closed outline, and the rule that generates its curves;
-   - the curved features named explicitly (for example "whiplash stems rising from each pier, tapering, branching twice").
+   - the curved features named explicitly (for example "whiplash stems rising from each pier, tapering, branching twice", or "five petals, each a lens bent along its midrib").
    If the user gives master curves in Rhino or a reference image, describe them in words with dimensions first and confirm. Ask once if scale, extents or the element list are unknown.
 2. **Expected values.** For each pass write the expected counts, extents and closed or open status before running it.
 3. **Passes**, one script each: (a) layers and setting-out lines on a non-printing layer, (b) closed outlines per band, back to front, (c) secondary elements, (d) ornament and curve families, (e) clipping of everything that passes behind a nearer outline, (f) fills and hatches, (g) export.
 4. **After each pass:** read the JSON report, fix execution errors (up to three retries), compare checks with expected values, then look at a capture.
-5. **Final review.** If subagents are available, give a fresh one the intent file, the reports, the exported sheet, the reference images, read-only access to the live Rhino slot (camera moves only) and permission to search for more references. It must not see the build reasoning or the scripts. Ask it to score the drawing 1 to 10 on: accuracy of elements, proportions, skyline, ornament fidelity, line-weight hierarchy, depth, masonry or material detail, and sheet; then list SHOULD fixes (errors) and COULD refinements, each concrete. When comparing versions, have it score both on the same rubric.
+5. **Final review.** If subagents are available, give a fresh one the intent file, the reports, the exported drawing, the reference images, read-only access to the live Rhino slot (camera moves only) and permission to search for more references. It must not see the build reasoning or the scripts. Ask it to score the drawing 1 to 10 on: accuracy of elements, proportions, silhouette, detail fidelity, line-weight hierarchy, depth, and material or surface detail; then list SHOULD fixes (errors) and COULD refinements, each concrete. When comparing versions, have it score both on the same rubric.
 6. **Hand over** the files, the route used, check results, review scores, and what still differs.
 
 ## Script template and helpers
@@ -76,7 +78,7 @@ from Rhino.Geometry.Intersect import Intersection
 from System.Collections.Generic import List
 
 OUT = r"C:\abs\path\to\job\_out"                 # absolute path, created beforehand
-JOB, PASS = "FACADE", "p03_ornament"             # JOB is the parent layer name
+JOB, PASS = "JOB01", "p03_ornament"              # JOB is the parent layer name
 doc = globals().get("__rhino_doc__") or sc.doc   # McNeel MCP injects __rhino_doc__
 tol = doc.ModelAbsoluteTolerance
 XY = rg.Plane.WorldXY
@@ -88,7 +90,7 @@ def pts(seq):                                    # [(x, y), ...] -> typed point 
     for x, y in seq: l.Add(rg.Point3d(x, y, 0))
     return l
 
-def layer(path, plot_mm=0.0, color=BLACK):       # "FACADE::FRONT"; creates parents; returns index
+def layer(path, plot_mm=0.0, color=BLACK):       # "JOB01::FRONT"; creates parents; returns index
     i = doc.Layers.FindByFullPath(path, -1)
     if i >= 0: return i
     parts = path.split("::")
@@ -227,8 +229,8 @@ Python in Rhino, traps that cost a round trip:
 | Flattened opening heads (rounded corners, flat crown) | `superhead(x0, x1, sill, spring, rise)` below | Many Art Nouveau and Victorian heads are neither semicircles nor plain segments |
 | Petal, leaf, lens | `lens(x0, y0, x1, y1, half_width)` below | Closed; fans of petals, iris leaves, fleurs-de-lis |
 | Stepped flat bar, meander | `flatbar([(x, y), ...], w)` below | No repeated consecutive points |
-| 45-degree cast shadow | `cast(closed_outline, depth)` below | Shadow length equals the projection depth |
-| Reveal shadow inside an opening | `reveal(glass_outline, depth)` below | Top and left strips |
+| 45-degree cast shadow (only when asked) | `cast(closed_outline, depth)` below | Shadow length equals the projection depth |
+| Reveal shadow inside an opening (only when asked) | `reveal(glass_outline, depth)` below | Top and left strips |
 
 ```python
 def whip(x, y, ang, L, bend=0.6, curl=4.0, n=60):   # heading = ang + bend*sin(pi*s) + curl*s^3 (radians), s = 0..1
@@ -271,33 +273,34 @@ def reveal(c, d):
 
 ## Depth bands, clipping and line weights
 
-- Line weight follows depth and importance, not material. Create the bands once with their print widths, in millimetres, unless the user has a standard: `GROUND` 0.70 (with a grey poché below), `CUT` 0.50, `OUTLINE` 0.50 (building outline, party walls, chimneys), `FRONT` 0.35 (projecting stone: balconies, oriels, cornices, sills), `MID` 0.18 (frames, hoods, dormers), `IRON` 0.18 (metalwork as twin thin outlines), `BACK` 0.13 (glazing bars, set-back glazing), `FINE` 0.07 (joints, slates, tiles, carved detail), `GHOST` 0.09 (neighbours, grey), `HATCH`, `SHADOW`, `REVEAL`, `IRONFILL` 0.0, and `SETOUT` with -1.0 (does not print).
-- Check the hierarchy on a print preview: if the finest real element (ironwork, glazing, ornament) carries the most ink, it is inverted. Never fill thin members solid dark; give metalwork a light fill. Keep fills in separate values: shadows lightest, glass light, reveal shadows darker. Screen colours vanish in print, so judge on the PDF.
+- Line weight follows depth and importance, not material. Create the bands once with their print widths, in millimetres, unless the user has a standard or the drawing style asks for something else (a single-weight diagram, a fine-line botanical study): `CUT` 0.50, `OUTLINE` 0.50 (the overall silhouette), `FRONT` 0.35 (the nearest projecting parts), `MID` 0.18, `BACK` 0.13 (set-back parts), `FINE` 0.07 (joints, texture, veins, carved detail), `GHOST` 0.09 (context, grey), `HATCH` 0.0 (plus `SHADOW` and `REVEAL` 0.0 only when shadows are asked for), and `SETOUT` with -1.0 (does not print).
+- Add bands the subject needs. A building elevation, for example, adds `GROUND` 0.70 with a grey poché below, `IRON` 0.18 for metalwork as twin thin outlines and `IRONFILL` 0.0; there `FRONT` holds balconies, oriels and cornices, `MID` frames and hoods, `BACK` glazing.
+- Check the hierarchy on a print preview: if the finest real element (ironwork, glazing, ornament, hairs, veins) carries the most ink, it is inverted. Never fill thin members solid dark; give them a light fill. Keep fills in separate values (with shadows, if asked for: shadows lightest, glass light, reveal shadows darker). Screen colours vanish in print, so judge on the PDF.
 - Draw the backmost band first. Before adding a curve to a band, clip it against every closed outline in nearer bands: `for region in nearer: pieces = [q for p in pieces for q in clip(p, region)]`.
 - Clipping closed outlines with `CreateBooleanDifference` has three traps, all met in testing:
   - an outline that fully contains a hider comes back with the hider as a hole, which duplicates the hider's line: drop pieces that lie inside another piece;
   - pockets enclosed only by hider edges (between rails and bars) come back as pieces that share no line with the original: keep a piece only if some of its points lie on the original outline (`ClosestPoint` distance under 2 x tol);
   - when the boolean fails on coincident edges, fall back to `clip` as open curves and report the element.
 - Detail drawn on a hider's face (dentils on a strip, rivets on a beam, carving on a console) is not behind it: exempt a curve from a hider that contains its bounding-box centre. Windows on a projecting oriel are hidden only by things in front of the oriel, not by the oriel itself.
-- Metalwork hides stone behind it: clip `FRONT` against `IRON` too, except elements that sit in front of the iron (handrails, caps).
-- Cast shadows: for every projecting closed outline, `cast(outline, depth)` with the depth from a table per element, filled in one light tint under everything else. Reveal shadows: `reveal(glass, depth)`, deeper for set-back glazing.
+- On a building, metalwork hides stone behind it: clip `FRONT` against `IRON` too, except elements that sit in front of the iron (handrails, caps).
+- No shadows unless the user asks for them. Do not add cast shadows, reveal shadows, shading or tonal fills to suggest depth on your own: depth comes from line weight and clipping. When shadows are asked for: `cast(outline, depth)` for each projecting closed outline the user names (or all of them if they say so), with the depth from a table per element, filled in one light tint under everything else; `reveal(glass, depth)` inside openings, deeper for set-back glazing.
 - An element that has thickness should be a closed outline (use `ribbon` or offsets and caps), so that it can clip what is behind it and take a fill.
 - `clip` is for open curves. A closed outline that passes behind a nearer one stays closed, and fillable, with `rg.Curve.CreateBooleanDifference(outline, nearer, tol)`.
 - Section drawings: everything sliced by the drawing plane is a closed outline on `CUT`, filled with `fill`. Everything beyond is drawn in bands as in an elevation.
 - To mask ornament inside a panel, keep the inside: `clip(curve, panel, keep_inside=True)`.
 
-## Recipes for curve-heavy ornament
+## Recipes for curve-heavy work
 
 These are construction patterns, not verified styles. The user judges the result.
-- **Design each piece from its own reference.** Do not stamp one motif on every railing, grille and capital: in testing, one symmetric scroll repeated five times read as generic Victorian, not as the architect's work. Look at the close-up, name what is there (counts of bays, fans, bars, loops; where each curve starts and ends; which bar it grows from; symmetric or not), then compose it from `whip`, `lens`, `flatbar` and rails. Repeat a design only where the building repeats it.
-- **Attach every curl to a member.** Start each `whip` on a bar, post or rail point. Floating fragments read as noise.
-- **True sizes.** Flat bar is 10 to 25 mm in elevation, colonnettes 70 to 120 mm. Oversized bars turn ironwork into furniture. Railings are about 1.0 to 1.1 m high; check that a crest or railing does not hide a skyline feature it should not.
+- **Design each piece from its own reference.** Do not stamp one motif on every instance: in testing, one symmetric scroll repeated on five railings read as generic Victorian, not as the architect's work. Look at the close-up, name what is there (counts of bays, fans, bars, loops, petals, teeth; where each curve starts and ends; what it grows from; symmetric or not), then compose it from `whip`, `lens`, `flatbar` and offsets. Repeat a design only where the subject repeats it.
+- **Attach every curl to a member.** Start each `whip` on a bar, stem, edge or rail point. Floating fragments read as noise.
+- **True sizes.** Take member sizes from the sources and check thin parts especially: oversized members change what the thing reads as (in building ironwork, flat bar is 10 to 25 mm in elevation; bars drawn at 50 mm turn a railing into furniture). Check that a near element does not hide a feature of the silhouette it should not.
 - **Setting out first.** Derive every start point, axis and limit from the named numbers in the intent file, then grow curves from them.
 - **Whiplash stem.** Points that alternate side to side along an axis with growing amplitude, interpolated: `[(x0 + sway * (i / (n - 1.0)) ** 1.5 * (-1) ** i, h * i / (n - 1.0)) for i in range(n)]`. Give it body with `ribbon(stem, w0, w1)`.
 - **Branching.** Children leave the parent tangentially at chosen parameters and end in a curl (a few points on a shrinking spiral). Shorten and thin each generation.
 - **Fields of lines.** Tween between two master curves and clip the family to a closed outline.
 - **Frames and mouldings.** Successive offsets of an opening outline, each on a lighter band.
-- **Bays.** Build one bay, mirror about its axis, then translate by the bay width. Vary named parameters per bay if the brief asks for irregularity.
+- **Repeats.** Build one unit (a bay, a tile, a petal, a tooth), mirror about its axis, then translate or rotate by the spacing. Vary named parameters per unit if the brief asks for irregularity.
 - Offer two or three variants by changing named parameters, not by rewriting scripts.
 
 ## Checks
@@ -306,8 +309,8 @@ Record each as expected versus actual in the JSON report. Any failure blocks the
 - `flat` is true: everything lies at z = 0.
 - Counts per band match the intent file; every named element exists (`o.Attributes.Name` on `job_objects()`).
 - Every outline meant to be closed is closed; `short`, `duplicates` and unintended `self_crossing` are zero. The duplicate test compares every pair, so run it per band on large drawings.
-- Extents of `job_objects()` fit the sheet at the stated scale.
-- Symmetric bays hold equal counts.
+- Extents of `job_objects()` match the overall dimensions in the intent file.
+- Symmetric or repeated units hold equal counts.
 - `primitive_share` stays below the limit set from the brief (a heuristic guard against line-and-arc output in a curve-heavy drawing).
 - Fill area is plausible: `rg.AreaMassProperties.Compute(hatch).Area`. If an expected range fails but the fill equals the area of the outlines it fills, the estimate was wrong, not the drawing: correct the expected value and say so.
 - **Accuracy table.** For each row of the element table (count, position, head shape), compare what was drawn by name with what the sources give. A mismatch blocks the pass like a geometry failure.
@@ -315,15 +318,22 @@ Record each as expected versus actual in the JSON report. Any failure blocks the
 
 ## Visual review
 
-Look at a capture of the Top view framed on the job (the template does this), and close-up captures (`capture(name, w, bb)`) of each dense area. Compare each close-up side by side with its reference photograph. Ask three to five yes or no questions taken from the intent file, each allowing "unclear", for example: "Does any line pass through a balcony that should hide it?", "Does the railing have the same number of bays as the photo?", "Does every curl grow from a bar?". Act only on the items that fail. Agents judge their own drawings poorly by eye, so the numeric checks, the independent review and the user's review carry the weight.
+Look at a capture of the Top view framed on the job (the template does this), and close-up captures (`capture(name, w, bb)`) of each dense area. Compare each close-up side by side with its reference photograph. Ask three to five yes or no questions taken from the intent file, each allowing "unclear", for example: "Does any line pass through an element that should hide it?", "Does the railing have the same number of bays as the photo?", "Does every curl grow from a bar?". Act only on the items that fail. Agents judge their own drawings poorly by eye, so the numeric checks, the independent review and the user's review carry the weight.
 
 ## Export (ran on Rhino 9, 23 Nov 2026)
 
+The export is the drawing alone, on a page just larger than its extents (or a paper size the user names). Laying it out on a sheet is the user's job.
+
 ```python
 view = doc.Views.Find("Top", False)
-w_mm, h_mm, dpi, scale = 594.0, 420.0, 300, 50.0          # A2 landscape at 1:50
-sheet = rg.BoundingBox(rg.Point3d(x0, y0, 0), rg.Point3d(x0 + w_mm * scale, y0 + h_mm * scale, 0))   # sheet frame in model mm
-view.ActiveViewport.ZoomBoundingBox(sheet)                 # the page is centred on the view: frame the sheet, not the drawing
+dpi, scale, margin_mm = 300, 50.0, 10.0                    # 1:50; use 1.0 for full size
+bb = rg.BoundingBox.Empty
+for o in job_objects(): bb.Union(o.Geometry.GetBoundingBox(True))
+w_mm = (bb.Max.X - bb.Min.X) / scale + 2 * margin_mm       # page size in mm, from the drawing extents
+h_mm = (bb.Max.Y - bb.Min.Y) / scale + 2 * margin_mm
+m = margin_mm * scale
+page = rg.BoundingBox(rg.Point3d(bb.Min.X - m, bb.Min.Y - m, 0), rg.Point3d(bb.Max.X + m, bb.Max.Y + m, 0))
+view.ActiveViewport.ZoomBoundingBox(page)                  # the page is centred on the view: frame the page, not the bare extents
 size = System.Drawing.Size(int(w_mm / 25.4 * dpi), int(h_mm / 25.4 * dpi))
 s = Rhino.Display.ViewCaptureSettings(view, size, dpi)
 s.RasterMode = False            # vector output that honours print widths
@@ -340,9 +350,8 @@ doc.Objects.UnselectAll()
 ```
 
 - DWG keeps model units, so its scale is inherent: prefer it when scale matters.
-- For PDF and SVG, draw a scale bar of known length, export, and confirm its length before stating a scale. Measure it in the PDF itself: `pymupdf` lists drawn rectangles with `page.get_drawings()`; convert points to mm with `/ 72 * 25.4`. Render a preview with `page.get_pixmap(dpi=100)` and look at it.
-- Frame the sheet rectangle, not the drawing extents. A long title line once stretched the extents and pushed the drawing off the page.
-- Make the sheet part of the drawing: a border and a title block column (title largest, then subject, place, scale and sheet size, materials, sources, accuracy statement, author and date); level datums with short labels beside the building; a label for each building or part; ghosted neighbours and a ground poché for context; a scale bar subdivided (for example 0.5 m blocks at 1:50). Fill the page; no large empty bands.
+- For PDF and SVG, confirm the scale before stating it: measure a known dimension of the drawing in the PDF itself. `pymupdf` lists drawn paths with `page.get_drawings()`; convert points to mm with `/ 72 * 25.4`. Render a preview with `page.get_pixmap(dpi=100)` and look at it.
+- Do not add a border, title block, labels, datums, scale bar or legend unless the user asks for them.
 - The PDF and SVG capture everything visible in the view. In a shared document, ask before hiding the user's layers, or export from a separate document.
 - Rhino 9 has no `FileSvgWriteOptions`, `FilePdfWriteOptions` or `FileDxfWriteOptions`.
 
@@ -361,17 +370,17 @@ h.paths.add_edge_path().add_spline(control_points=ring, degree=3, periodic=1)
 backend = svg.SVGBackend()
 cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE, color_policy=config.ColorPolicy.BLACK)
 Frontend(RenderContext(d), backend, config=cfg).draw_layout(msp)
-open("sheet.svg", "w").write(backend.get_string(layout.Page(420, 297, layout.Units.mm)))
-d.saveas("sheet.dxf")
+open("drawing.svg", "w").write(backend.get_string(layout.Page(420, 297, layout.Units.mm)))
+d.saveas("drawing.dxf")
 ```
 
-Review image: `cairosvg.svg2png(url="sheet.svg", write_to="sheet.png", output_width=2400, background_color="white")`. ezdxf stores true splines but has no curve booleans or clipping, so compute geometry with the same rules and keep overlaps simple. The DXF opens in Rhino for finishing.
+Review image: `cairosvg.svg2png(url="drawing.svg", write_to="drawing.png", output_width=2400, background_color="white")`. ezdxf stores true splines but has no curve booleans or clipping, so compute geometry with the same rules and keep overlaps simple. The DXF opens in Rhino for finishing.
 
 ## Limits to state in the hand-over
 
-- No published evaluation covers agents producing detailed architectural drawings; this method transfers evidence from 3D CAD studies.
+- No published evaluation covers agents producing detailed 2D line drawings; this method transfers evidence from 3D CAD studies.
 - The agent executes curves well and judges composition poorly. Results are strongest when the user supplies master curves, a setting-out or a reference, and when the agent researches more references itself.
-- What research changed in one test (a Horta facade, 23 Nov 2026): v1 from one small photo scored about 3.5 of 10 with an independent reviewer; v3, rebuilt from a near-frontal historic photo, close-ups and the critique's advice, scored about 6. The largest gains came from proportions, element counts and the sheet; ornament fidelity remained the weakest part.
-- Dimensions scaled from photographs are estimates (about 10%); say so on the sheet.
+- What research changed in one test (a Horta facade, 23 Nov 2026): v1 from one small photo scored about 3.5 of 10 with an independent reviewer; v3, rebuilt from a near-frontal historic photo, close-ups and the critique's advice, scored about 6. The largest gains came from proportions and element counts (the sheet also improved, but sheet layout has since been taken out of this skill); ornament fidelity remained the weakest part.
+- Dimensions scaled from photographs are estimates (about 10%); say so in the hand-over.
 - Clipping handles closed outlines. Open or self-crossing elements cannot hide what is behind them: report any that were left unclipped.
 - Aesthetic decisions stay with the user.
